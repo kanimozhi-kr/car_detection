@@ -1,6 +1,3 @@
-%pip install streamlit pyngrok torch torchvision pillow
-dbutils.library.restartPython()
-
 import streamlit as st
 import torch
 import torchvision.models as models
