@@ -26,14 +26,33 @@ def is_ai_generated(image):
     except Exception:
         return False
 
+def openai_car_fake_real(image):
+    # Example: Use OpenAI's vision API to classify car image as fake or real (replace with your own logic or API)
+    openai_api_url = "https://api.openai.com/v1/images/analysis"
+    openai_api_key = "YOUR_OPENAI_API_KEY"  # Replace with your OpenAI API key
+    headers = {
+        "Authorization": f"Bearer {openai_api_key}"
+    }
+    try:
+        response = requests.post(openai_api_url, headers=headers, files={"image": image})
+        result = response.json()
+        # Assume the API returns a label "fake" or "real"
+        return result.get("label", "unknown")
+    except Exception:
+        return "unknown"
+
 if uploaded_file:
     image = Image.open(uploaded_file).convert("RGB")
     st.image(image, caption="Uploaded Image", use_column_width=True)
 
     # Check if image is AI-generated
     ai_generated = is_ai_generated(uploaded_file)
+    openai_label = openai_car_fake_real(uploaded_file)
     if ai_generated:
         st.warning("This image appears to be AI-generated or AI-edited. Marking as Fraudulent.")
+        st.success("Prediction: Fraudulent")
+    elif openai_label == "fake":
+        st.warning("OpenAI API detected this image as fake. Marking as Fraudulent.")
         st.success("Prediction: Fraudulent")
     else:
         transform = transforms.Compose([
@@ -48,7 +67,7 @@ if uploaded_file:
             probs = torch.softmax(output, dim=1)
             predicted = torch.argmax(probs, dim=1)  # Use probabilities for prediction
             # If image is AI-generated, always mark as Fraudulent regardless of model prediction
-            if ai_generated:
+            if ai_generated or openai_label == "fake":
                 label = "Fraudulent"
             else:
                 label = "Fraudulent" if predicted.item() == 1 else "Genuine"
