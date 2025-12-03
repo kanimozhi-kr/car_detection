@@ -47,8 +47,8 @@ if uploaded_file:
             output = model(img_tensor)
             probs = torch.softmax(output, dim=1)
             predicted = torch.argmax(probs, dim=1)  # Use probabilities for prediction
-            # If model predicts Genuine but image is AI-generated, override to Fraudulent
-            if predicted.item() == 0 and ai_generated:
+            # If image is AI-generated, always mark as Fraudulent regardless of model prediction
+            if ai_generated:
                 label = "Fraudulent"
             else:
                 label = "Fraudulent" if predicted.item() == 1 else "Genuine"
