@@ -1,25 +1,20 @@
+%pip install streamlit pyngrok torch torchvision pillow
+dbutils.library.restartPython()
+
 import streamlit as st
 import torch
-import torch.nn as nn
+import torchvision.models as models
 import torchvision.transforms as transforms
 from PIL import Image
 
-# your model architecture
-class FraudDetector(nn.Module):
-    def __init__(self):
-        super(FraudDetector, self).__init__()
-        self.fc = nn.Linear(512, 2)  # Adjust based on your model
+# Use the same architecture as the saved model
+model = models.resnet50()
+model.fc = torch.nn.Linear(2048, 2)  # Adjust output classes if needed
 
-    def forward(self, x):
-        return self.fc(x)
-
-# Load model from current directory
 model_path = "./fraud_detector.pth"
-model = FraudDetector()
 model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
 model.eval()
 
-# Streamlit UI
 st.title("Car Insurance Fraud Detection")
 uploaded_file = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png"])
 
