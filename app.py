@@ -1,4 +1,3 @@
-
 import streamlit as st
 import torch
 import torchvision.models as models
@@ -34,7 +33,7 @@ if uploaded_file:
     # Check if image is AI-generated
     ai_generated = is_ai_generated(uploaded_file)
     if ai_generated:
-        st.warning("This image appears to be AI-generated. Marking as Fraudulent.")
+        st.warning("This image appears to be AI-generated or AI-edited. Marking as Fraudulent.")
         st.success("Prediction: Fraudulent")
     else:
         transform = transforms.Compose([
@@ -48,7 +47,11 @@ if uploaded_file:
             output = model(img_tensor)
             probs = torch.softmax(output, dim=1)
             predicted = torch.argmax(probs, dim=1)  # Use probabilities for prediction
-            label = "Fraudulent" if predicted.item() == 1 else "Genuine"
+            # If model predicts Genuine but image is AI-generated, override to Fraudulent
+            if predicted.item() == 0 and ai_generated:
+                label = "Fraudulent"
+            else:
+                label = "Fraudulent" if predicted.item() == 1 else "Genuine"
             st.write(f"Confidence (Fraudulent): {probs[0,1].item():.2f}")
             st.write(f"Confidence (Genuine): {probs[0,0].item():.2f}")
 
