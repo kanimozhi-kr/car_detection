@@ -53,18 +53,6 @@ car_brand_keywords = [
 car_brand_patterns = [re.compile(rf"\b{kw}\b", re.IGNORECASE) for kw in car_brand_keywords]
 
 def contains_ai_logo_or_text(image):
-    # OCR step: Use pytesseract to extract text from image
-    try:
-        import pytesseract
-        text = pytesseract.image_to_string(image)
-        # Remove car brand names from detected text
-        for pattern in car_brand_patterns:
-            text = pattern.sub("", text)
-        for pattern in ai_logo_patterns:
-            if pattern.search(text):
-                return True
-    except Exception:
-        pass
     # Logo detection using CLIP zero-shot (including Samsung, Apple)
     logo_labels = [
         "logo of gemini", "logo of chatgpt", "logo of dalle", "logo of midjourney", "logo of stable diffusion",
@@ -155,7 +143,7 @@ if uploaded_file:
     image = Image.open(uploaded_file).convert("RGB")
     st.image(image, caption="Uploaded Image", use_column_width=True)
 
-    # Step: Check for AI logo/text (ignoring car brand names)
+    # Step: Check for AI logo only (no text deduction)
     ai_logo_detected = contains_ai_logo_or_text(image)
 
     # ResNet50 prediction
@@ -201,7 +189,7 @@ if uploaded_file:
     ]
     ensembled_result = dict(zip(class_names, avg_probs))
 
-    # If AI logo/text detected, override prediction
+    # If AI logo detected, override prediction
     if ai_logo_detected:
         ensembled_result = dict(zip(class_names, [0, 0, 1, 0]))
 
@@ -211,4 +199,4 @@ if uploaded_file:
     predicted_class = max(ensembled_result, key=ensembled_result.get)
     st.info(f"Predicted image is a {predicted_class.replace('_', ' ')}")
     if ai_logo_detected:
-        st.warning("AI image generator logo or text detected in image.")
+        st.warning("AI image generator logo detected in image.")
