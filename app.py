@@ -6,7 +6,7 @@ from PIL import Image
 
 from transformers import CLIPProcessor, CLIPModel
 
-# Class names
+# Class namesa
 class_names = ["real_car","not_car", "ai_generated_car", "ai_edited_car"]
 real_car_vs_not_car_labels = ["real_car", "not_real_car"]
 
@@ -150,3 +150,7 @@ if uploaded_file:
 
     st.success("Ensembled Model Output")
     st.write(ensembled_result)
+
+    # Predicted class from ensembled_result
+    predicted_class = max(ensembled_result, key=ensembled_result.get)
+    st.info(f"Predicted image is a {predicted_class.replace('_', ' ')}")
