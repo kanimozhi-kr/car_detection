@@ -2,7 +2,8 @@ import streamlit as st
 import torch
 import torch.nn as nn
 from torchvision import models, transforms
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
+import re
 
 from transformers import CLIPProcessor, CLIPModel
 
@@ -36,6 +37,40 @@ transform = transforms.Compose([
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 ])
+
+# AI logo keywords and text patterns
+ai_logo_keywords = [
+    "gemini", "chatgpt", "dalle", "midjourney", "stable diffusion", "ai generated", "openai", "copilot"
+]
+ai_logo_patterns = [re.compile(rf"\b{kw}\b", re.IGNORECASE) for kw in ai_logo_keywords]
+
+def contains_ai_logo_or_text(image):
+    # OCR step: Use pytesseract to extract text from image
+    try:
+        import pytesseract
+        text = pytesseract.image_to_string(image)
+        for pattern in ai_logo_patterns:
+            if pattern.search(text):
+                return True
+    except Exception:
+        pass
+    # Optionally, add logo detection using CLIP zero-shot
+    logo_labels = [
+        "logo of gemini", "logo of chatgpt", "logo of dalle", "logo of midjourney", "logo of stable diffusion", "logo of openai", "logo of copilot"
+    ]
+    inputs = clip_processor(
+        text=logo_labels,
+        images=image,
+        return_tensors="pt",
+        padding=True
+    )
+    with torch.no_grad():
+        outputs = clip_model(**inputs)
+        logits = outputs.logits_per_image
+        probs = logits.softmax(dim=1).squeeze().tolist()
+        if max(probs) > 0.5:
+            return True
+    return False
 
 # OpenAI CLIP hierarchical car detection
 def openai_car_hierarchical_predict(image):
@@ -108,6 +143,9 @@ if uploaded_file:
     image = Image.open(uploaded_file).convert("RGB")
     st.image(image, caption="Uploaded Image", use_column_width=True)
 
+    # Step: Check for AI logo/text
+    ai_logo_detected = contains_ai_logo_or_text(image)
+
     # ResNet50 prediction
     img_tensor = transform(image).unsqueeze(0)
     with torch.no_grad():
@@ -151,9 +189,14 @@ if uploaded_file:
     ]
     ensembled_result = dict(zip(class_names, avg_probs))
 
-    st.success("Ensembled Model Output")
+    # If AI logo/text detected, override prediction
+    if ai_logo_detected:
+        ensembled_result = dict(zip(class_names, [0, 0, 1, 0]))
 
+    st.success("Ensembled Model Output")
 
     # Predicted class from ensembled_result
     predicted_class = max(ensembled_result, key=ensembled_result.get)
     st.info(f"Predicted image is a {predicted_class.replace('_', ' ')}")
+    if ai_logo_detected:
+        st.warning("AI image generator logo or text detected in image.")
