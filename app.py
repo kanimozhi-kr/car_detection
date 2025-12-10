@@ -137,19 +137,22 @@ if uploaded_file:
     # OpenAI hierarchical car detection
     _, hier_probs = openai_car_hierarchical_predict(image)
     openai_hier_result = hier_probs
-
-    # Ensemble average
+    # Ensemble weighted average: 15% ResNet, 85% others equally
+    weights = [0.15, 0.2833, 0.2833, 0.2833]  # 0.15 + 3*0.2833 ≈ 1.0
     all_probs = [
         list(resnet_result.values()),
         list(clip_result.values()),
         list(clip_real_car_result.values()),
         list(openai_hier_result.values())
     ]
-    avg_probs = [sum(x)/len(x) for x in zip(*all_probs)]
+    avg_probs = [
+        sum(w * p for w, p in zip(weights, prob_tuple))
+        for prob_tuple in zip(*all_probs)
+    ]
     ensembled_result = dict(zip(class_names, avg_probs))
 
     st.success("Ensembled Model Output")
-    st.write(ensembled_result)
+
 
     # Predicted class from ensembled_result
     predicted_class = max(ensembled_result, key=ensembled_result.get)
