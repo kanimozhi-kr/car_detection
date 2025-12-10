@@ -7,7 +7,8 @@ from PIL import Image
 from transformers import CLIPProcessor, CLIPModel
 
 # Class names
-class_names = ["not_car", "ai_generated_car", "ai_edited_car", "real_car"]
+class_names = ["real_car","not_car", "ai_generated_car", "ai_edited_car"]
+real_car_vs_not_car_labels = ["real_car", "not_real_car"]
 
 # Model definition: ResNet50
 class CarTypeDetector(nn.Module):
@@ -70,6 +71,21 @@ def openai_car_hierarchical_predict(image):
         pred_label2 = car_type_labels[pred_idx2]
     return pred_label2, dict(zip(car_type_labels, probs2))
 
+def clip_real_car_predict(image):
+    inputs = clip_processor(
+        text=real_car_vs_not_car_labels,
+        images=image,
+        return_tensors="pt",
+        padding=True
+    )
+    with torch.no_grad():
+        outputs = clip_model(**inputs)
+        logits = outputs.logits_per_image
+        probs = logits.softmax(dim=1).squeeze().tolist()
+        pred_idx = logits.argmax(dim=1).item()
+        pred_label = real_car_vs_not_car_labels[pred_idx]
+    return pred_label, dict(zip(real_car_vs_not_car_labels, probs))
+
 # Streamlit UI
 st.title("Car Type Detection: Not Car / AI Generated / AI Edited / Real Car")
 uploaded_file = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png"])
@@ -103,6 +119,11 @@ if uploaded_file:
         clip_label = class_names[clip_pred_idx]
         st.success(f"CLIP Prediction: {clip_label}")
         st.write(f"CLIP Probabilities: {dict(zip(class_names, clip_probs))}")
+
+    # CLIP real car vs not real car prediction
+    real_car_label, real_car_probs = clip_real_car_predict(image)
+    st.success(f"CLIP Real Car Prediction: {real_car_label}")
+    st.write(f"CLIP Real Car Probabilities: {real_car_probs}")
 
     # OpenAI hierarchical car detection
     hier_label, hier_probs = openai_car_hierarchical_predict(image)
