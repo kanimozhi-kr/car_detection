@@ -1,3 +1,6 @@
+%pip install transformers
+dbutils.library.restartPython()
+
 import streamlit as st
 import torch
 import torch.nn as nn
