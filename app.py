@@ -68,7 +68,12 @@ def contains_ai_logo_or_text(image):
         outputs = clip_model(**inputs)
         logits = outputs.logits_per_image
         probs = logits.softmax(dim=1).squeeze().tolist()
-        if max(probs) > 0.5:
+        # Fix: Require high confidence and clear separation from other classes
+        max_prob = max(probs)
+        max_idx = probs.index(max_prob)
+        # Only trigger if max_prob > 0.7 and at least 2x higher than next highest
+        sorted_probs = sorted(probs, reverse=True)
+        if max_prob > 0.7 and (len(sorted_probs) < 2 or max_prob > 2 * sorted_probs[1]):
             return True
     return False
 
