@@ -101,8 +101,11 @@ if uploaded_file:
         probs = torch.softmax(output, dim=1)
         pred_idx = torch.argmax(probs, dim=1).item()
         label = class_names[pred_idx]
-        st.success(f"ResNet50 Prediction: {label}")
-        st.write(f"ResNet50 Probabilities: {dict(zip(class_names, probs.squeeze().tolist()))}")
+        resnet_result = {
+            "model": "ResNet50",
+            "prediction": label,
+            "probabilities": dict(zip(class_names, probs.squeeze().tolist()))
+        }
 
     # CLIP prediction
     clip_inputs = clip_processor(
@@ -117,15 +120,35 @@ if uploaded_file:
         clip_probs = logits_per_image.softmax(dim=1).squeeze().tolist()
         clip_pred_idx = logits_per_image.argmax(dim=1).item()
         clip_label = class_names[clip_pred_idx]
-        st.success(f"CLIP Prediction: {clip_label}")
-        st.write(f"CLIP Probabilities: {dict(zip(class_names, clip_probs))}")
+        clip_result = {
+            "model": "CLIP",
+            "prediction": clip_label,
+            "probabilities": dict(zip(class_names, clip_probs))
+        }
 
     # CLIP real car vs not real car prediction
     real_car_label, real_car_probs = clip_real_car_predict(image)
-    st.success(f"CLIP Real Car Prediction: {real_car_label}")
-    st.write(f"CLIP Real Car Probabilities: {real_car_probs}")
+    clip_real_car_result = {
+        "model": "CLIP Real Car",
+        "prediction": real_car_label,
+        "probabilities": real_car_probs
+    }
 
     # OpenAI hierarchical car detection
     hier_label, hier_probs = openai_car_hierarchical_predict(image)
-    st.success(f"OpenAI Hierarchical Prediction: {hier_label}")
-    st.write(f"OpenAI Hierarchical Probabilities: {hier_probs}")
+    openai_hier_result = {
+        "model": "OpenAI Hierarchical",
+        "prediction": hier_label,
+        "probabilities": hier_probs
+    }
+
+    # Combine all results
+    combined_output = {
+        "ResNet50": resnet_result,
+        "CLIP": clip_result,
+        "CLIP Real Car": clip_real_car_result,
+        "OpenAI Hierarchical": openai_hier_result
+    }
+
+    st.success("Combined Model Output")
+    st.write(combined_output)
