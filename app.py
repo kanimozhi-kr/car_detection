@@ -38,25 +38,37 @@ transform = transforms.Compose([
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 ])
 
-# AI logo keywords and text patterns
+# AI logo keywords and text patterns (exclude car brands)
 ai_logo_keywords = [
-    "gemini", "chatgpt", "dalle", "midjourney", "stable diffusion", "ai generated", "openai", "copilot"
+    "gemini", "chatgpt", "dalle", "midjourney", "stable diffusion", "ai generated", "openai", "copilot",
+    "samsung", "apple"
 ]
 ai_logo_patterns = [re.compile(rf"\b{kw}\b", re.IGNORECASE) for kw in ai_logo_keywords]
+
+# Car brand names to ignore in OCR
+car_brand_keywords = [
+    "toyota", "honda", "ford", "chevrolet", "bmw", "mercedes", "audi", "tesla", "volkswagen", "nissan",
+    "hyundai", "kia", "mazda", "subaru", "porsche", "jaguar", "land rover", "fiat", "renault", "peugeot","ertiga"
+]
+car_brand_patterns = [re.compile(rf"\b{kw}\b", re.IGNORECASE) for kw in car_brand_keywords]
 
 def contains_ai_logo_or_text(image):
     # OCR step: Use pytesseract to extract text from image
     try:
         import pytesseract
         text = pytesseract.image_to_string(image)
+        # Remove car brand names from detected text
+        for pattern in car_brand_patterns:
+            text = pattern.sub("", text)
         for pattern in ai_logo_patterns:
             if pattern.search(text):
                 return True
     except Exception:
         pass
-    # Optionally, add logo detection using CLIP zero-shot
+    # Logo detection using CLIP zero-shot (including Samsung, Apple)
     logo_labels = [
-        "logo of gemini", "logo of chatgpt", "logo of dalle", "logo of midjourney", "logo of stable diffusion", "logo of openai", "logo of copilot"
+        "logo of gemini", "logo of chatgpt", "logo of dalle", "logo of midjourney", "logo of stable diffusion",
+        "logo of openai", "logo of copilot", "logo of samsung", "logo of apple"
     ]
     inputs = clip_processor(
         text=logo_labels,
@@ -143,7 +155,7 @@ if uploaded_file:
     image = Image.open(uploaded_file).convert("RGB")
     st.image(image, caption="Uploaded Image", use_column_width=True)
 
-    # Step: Check for AI logo/text
+    # Step: Check for AI logo/text (ignoring car brand names)
     ai_logo_detected = contains_ai_logo_or_text(image)
 
     # ResNet50 prediction
