@@ -54,7 +54,7 @@ def openai_car_hierarchical_predict(image):
         pred_idx = logits.argmax(dim=1).item()
         pred_label = car_vs_not_car_labels[pred_idx]
     if pred_label == "not_car":
-        return "not_car", dict(zip(car_vs_not_car_labels, probs))
+        return "not_car", dict(zip(class_names, [0, 1, 0, 0]))
     # If car, check ai_generated vs ai_edited vs real
     car_type_labels = ["ai_generated_car", "ai_edited_car", "real_car"]
     inputs2 = clip_processor(
@@ -69,7 +69,14 @@ def openai_car_hierarchical_predict(image):
         probs2 = logits2.softmax(dim=1).squeeze().tolist()
         pred_idx2 = logits2.argmax(dim=1).item()
         pred_label2 = car_type_labels[pred_idx2]
-    return pred_label2, dict(zip(car_type_labels, probs2))
+    # Map to class_names order
+    mapped_probs = [
+        probs2[2],  # real_car
+        0,          # not_car
+        probs2[0],  # ai_generated_car
+        probs2[1]   # ai_edited_car
+    ]
+    return pred_label2, dict(zip(class_names, mapped_probs))
 
 def clip_real_car_predict(image):
     inputs = clip_processor(
@@ -84,7 +91,14 @@ def clip_real_car_predict(image):
         probs = logits.softmax(dim=1).squeeze().tolist()
         pred_idx = logits.argmax(dim=1).item()
         pred_label = real_car_vs_not_car_labels[pred_idx]
-    return pred_label, dict(zip(real_car_vs_not_car_labels, probs))
+    # Map to class_names order
+    mapped_probs = [
+        probs[0],  # real_car
+        probs[1],  # not_car
+        0,         # ai_generated_car
+        0          # ai_edited_car
+    ]
+    return pred_label, dict(zip(class_names, mapped_probs))
 
 # Streamlit UI
 st.title("Car Type Detection: Not Car / AI Generated / AI Edited / Real Car")
@@ -101,11 +115,7 @@ if uploaded_file:
         probs = torch.softmax(output, dim=1)
         pred_idx = torch.argmax(probs, dim=1).item()
         label = class_names[pred_idx]
-        resnet_result = {
-            "model": "ResNet50",
-            "prediction": label,
-            "probabilities": dict(zip(class_names, probs.squeeze().tolist()))
-        }
+        resnet_result = dict(zip(class_names, probs.squeeze().tolist()))
 
     # CLIP prediction
     clip_inputs = clip_processor(
@@ -118,37 +128,25 @@ if uploaded_file:
         clip_outputs = clip_model(**clip_inputs)
         logits_per_image = clip_outputs.logits_per_image
         clip_probs = logits_per_image.softmax(dim=1).squeeze().tolist()
-        clip_pred_idx = logits_per_image.argmax(dim=1).item()
-        clip_label = class_names[clip_pred_idx]
-        clip_result = {
-            "model": "CLIP",
-            "prediction": clip_label,
-            "probabilities": dict(zip(class_names, clip_probs))
-        }
+        clip_result = dict(zip(class_names, clip_probs))
 
     # CLIP real car vs not real car prediction
-    real_car_label, real_car_probs = clip_real_car_predict(image)
-    clip_real_car_result = {
-        "model": "CLIP Real Car",
-        "prediction": real_car_label,
-        "probabilities": real_car_probs
-    }
+    _, real_car_probs = clip_real_car_predict(image)
+    clip_real_car_result = real_car_probs
 
     # OpenAI hierarchical car detection
-    hier_label, hier_probs = openai_car_hierarchical_predict(image)
-    openai_hier_result = {
-        "model": "OpenAI Hierarchical",
-        "prediction": hier_label,
-        "probabilities": hier_probs
-    }
+    _, hier_probs = openai_car_hierarchical_predict(image)
+    openai_hier_result = hier_probs
 
-    # Combine all results
-    combined_output = {
-        "ResNet50": resnet_result,
-        "CLIP": clip_result,
-        "CLIP Real Car": clip_real_car_result,
-        "OpenAI Hierarchical": openai_hier_result
-    }
+    # Ensemble average
+    all_probs = [
+        list(resnet_result.values()),
+        list(clip_result.values()),
+        list(clip_real_car_result.values()),
+        list(openai_hier_result.values())
+    ]
+    avg_probs = [sum(x)/len(x) for x in zip(*all_probs)]
+    ensembled_result = dict(zip(class_names, avg_probs))
 
-    st.success("Combined Model Output")
-    st.write(combined_output)
+    st.success("Ensembled Model Output")
+    st.write(ensembled_result)
