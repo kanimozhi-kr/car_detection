@@ -3,6 +3,8 @@ import torch
 import torch.nn as nn
 from torchvision import models, transforms
 from PIL import Image
+
+
 from transformers import CLIPProcessor, CLIPModel
 
 # Class names
@@ -17,11 +19,13 @@ class CarTypeDetector(nn.Module):
     def forward(self, x):
         return self.model(x)
 
-# Load ResNet50 model
+# Load ResNet50 model with strict=False to ignore key mismatches
 resnet_model_path = "./car_type_detector_resnet50.pth"
 resnet_model = CarTypeDetector(num_classes=len(class_names))
-resnet_model.load_state_dict(torch.load(resnet_model_path, map_location=torch.device('cpu')))
+state_dict = torch.load(resnet_model_path, map_location=torch.device('cpu'))
+resnet_model.load_state_dict(state_dict, strict=False)
 resnet_model.eval()
+
 
 # Load OpenAI CLIP model
 clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch16")
