@@ -1,4 +1,7 @@
-%pip install transformers
+import sys
+import subprocess
+
+subprocess.check_call([sys.executable, "-m", "pip", "install", "transformers"])
 dbutils.library.restartPython()
 
 import streamlit as st
